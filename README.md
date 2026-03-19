@@ -2,62 +2,56 @@
 
 Sistem de calcul necesar aprovizionare pentru magazin, cu import validat de date.
 
-## Structura Proiectului
+## Setup Rapid (3 pasi)
 
-```
-NecesarAprovizionare.xlsx    ← Fișierul Excel principal
-sabloane/
-  Sablon_StocDepozit.xlsx    ← Șablon pentru fișierul de stoc
-  Sablon_VanzariMagazin.xlsx ← Șablon pentru fișierul de vânzări
-vba_modules/
-  ModImport.bas              ← Modulul principal (import + validare)
-  ModButoane.bas              ← Creare butoane interactive
-  ThisWorkbook.cls            ← Evenimente la deschidere
-generate_excel.py             ← Script regenerare Excel
-generate_sabloane.py          ← Script regenerare șabloane
-```
+1. Deschideti `NecesarAprovizionare.xlsx` in Excel
+2. **Save As** -> selectati tipul **Excel Macro-Enabled Workbook (.xlsm)**
+3. `Alt+F11` -> click dreapta pe proiect -> **Import File** -> selectati `vba_modules/ModNecesar.bas`
+4. `Alt+F8` -> selectati **ConfigureazaAplicatia** -> **Run**
+5. Salvati fisierul. Gata!
 
-## Configurare Inițială (o singură dată)
-
-1. Deschideți `NecesarAprovizionare.xlsx` în Excel
-2. **Salvați ca** → `NecesarAprovizionare.xlsm` (Excel Macro-Enabled Workbook)
-3. Apăsați `Alt+F11` pentru a deschide editorul VBA
-4. Click dreapta pe proiect → **Import File** → selectați pe rând:
-   - `vba_modules/ModImport.bas`
-   - `vba_modules/ModButoane.bas`
-5. Faceți dublu-click pe **ThisWorkbook** în panel și copiați conținutul din `vba_modules/ThisWorkbook.cls`
-6. Apăsați `Alt+F8` → selectați `CreazaButoane` → **Run** (o singură dată, creează butoanele)
-7. Salvați fișierul
-
-## Cum se Folosește
+## Cum se Foloseste
 
 ### Import Stoc Depozit
 - Click pe butonul **IMPORT STOC DEPOZIT** din pagina Meniu
-- Selectați fișierul `.xlsx` cu stocul din depozit
-- Fișierul **trebuie** să aibă exact headerele: `CodProdus` | `Stoc`
+- Selectati fisierul `.xlsx` cu stocul din depozit
+- Fisierul **trebuie** sa aiba exact headerele: `CodProdus` | `Stoc`
 
-### Import Vânzări Magazin
-- Click pe butonul **IMPORT VÂNZĂRI MAGAZIN** din pagina Meniu
-- Selectați fișierul `.xlsx` cu vânzările
-- Fișierul **trebuie** să aibă exact headerele: `CodProdus` | `Cantitate`
+### Import Vanzari Magazin
+- Click pe butonul **IMPORT VANZARI MAGAZIN** din pagina Meniu
+- Selectati fisierul `.xlsx` cu vanzarile
+- Fisierul **trebuie** sa aiba exact headerele: `CodProdus` | `Cantitate`
 
-### Ștergere Date
-- Click pe butonul **ȘTERGE TOATE DATELE** (cu dublă confirmare)
+### Stergere Date
+- Click pe butonul **STERGE TOATE DATELE** (cu dubla confirmare)
 
-## Validare Fișiere Import
+## Validare Fisiere Import
 
-Sistemul verifică automat:
-- Headerele din rândul 1 trebuie să fie exact ca în șablon
-- Fișierul trebuie să conțină cel puțin 1 rând de date
-- Se acceptă doar fișiere `.xlsx` sau `.xls`
+Sistemul verifica automat:
+- Headerele din randul 1 trebuie sa fie exact ca in sablon
+- Fisierul trebuie sa contina cel putin 1 rand de date
+- Se accepta doar fisiere `.xlsx` sau `.xls`
+
+## Structura Proiectului
+
+```
+NecesarAprovizionare.xlsx       <- Fisierul Excel principal
+sabloane/
+  Sablon_StocDepozit.xlsx       <- Sablon import stoc (CodProdus | Stoc)
+  Sablon_VanzariMagazin.xlsx    <- Sablon import vanzari (CodProdus | Cantitate)
+vba_modules/
+  ModNecesar.bas                <- Modulul VBA complet (un singur fisier)
+generate_excel.py               <- Script regenerare Excel
+generate_sabloane.py            <- Script regenerare sabloane
+```
 
 ## Sheet-uri
 
 | Sheet | Scop |
 |-------|------|
-| Meniu | Pagina principală cu butoane și status |
+| Meniu | Pagina principala cu butoane si status |
 | StocDepozit | Datele importate de stoc din depozit |
-| VanzariMagazin | Datele importate de vânzări |
-| Compatibilitati | Tabel de compatibilități între produse |
+| VanzariMagazin | Datele importate de vanzari |
+| Compatibilitati | Tabel de compatibilitati intre produse |
 | ReguliRotunjire | Reguli de rotunjire per categorie/produs |
-| Log | Jurnal cu toate operațiunile efectuate |
+| Log | Jurnal cu toate operatiunile efectuate |

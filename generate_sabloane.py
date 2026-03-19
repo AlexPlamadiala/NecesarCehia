@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generează fișierele șablon pentru import.
-Acestea trebuie respectate exact la structură pentru a trece validarea.
+Genereaza fisierele sablon pentru import.
+Acestea trebuie respectate exact la structura pentru a trece validarea.
 """
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -30,7 +30,7 @@ def create_sablon_stoc():
     ws = wb.active
     ws.title = "StocDepozit"
 
-    # HEADERELE OBLIGATORII - exact așa trebuie să fie
+    # HEADERELE OBLIGATORII - exact asa trebuie sa fie
     ws["A1"] = "CodProdus"
     ws["B1"] = "Stoc"
     style_header(ws, 1, 2)
@@ -51,7 +51,7 @@ def create_sablon_stoc():
         ws.cell(row=i, column=2).alignment = Alignment(horizontal="center")
 
     wb.save("sabloane/Sablon_StocDepozit.xlsx")
-    print("  ✓ sabloane/Sablon_StocDepozit.xlsx")
+    print("  - sabloane/Sablon_StocDepozit.xlsx")
 
 
 def create_sablon_vanzari():
@@ -80,12 +80,11 @@ def create_sablon_vanzari():
         ws.cell(row=i, column=2).alignment = Alignment(horizontal="center")
 
     wb.save("sabloane/Sablon_VanzariMagazin.xlsx")
-    print("  ✓ sabloane/Sablon_VanzariMagazin.xlsx")
+    print("  - sabloane/Sablon_VanzariMagazin.xlsx")
 
 
 if __name__ == "__main__":
-    print("Generare șabloane import...")
+    print("Generare sabloane import...")
     create_sablon_stoc()
     create_sablon_vanzari()
-    print("\nȘabloanele au fost generate în folderul 'sabloane/'")
-    print("Folosiți aceste fișiere ca model pentru datele de import.")
+    print("\nSabloanele au fost generate in folderul 'sabloane/'")

@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 """
-Generator pentru fișierul Excel 'NecesarAprovizionare.xlsm'
-Creează structura de bază cu sheet-uri, formatare și protecție.
-Codul VBA trebuie importat manual din fișierul vba_modules/.
+Generator pentru fisierul Excel 'NecesarAprovizionare.xlsx'
+Creeaza structura de baza cu sheet-uri si formatare.
 """
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from copy import copy
 
-# ── Constante de stil ──────────────────────────────────────────────
+# -- Constante de stil -----------------------------------------------------------
 HEADER_FONT = Font(name="Calibri", bold=True, size=11, color="FFFFFF")
 HEADER_FILL = PatternFill(start_color="2F5496", end_color="2F5496", fill_type="solid")
 HEADER_ALIGN = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -35,7 +32,6 @@ DATA_ALIGN = Alignment(horizontal="center", vertical="center")
 
 
 def style_header_row(ws, row, col_start, col_end):
-    """Aplică stilul de header pe un rând."""
     for col in range(col_start, col_end + 1):
         cell = ws.cell(row=row, column=col)
         cell.font = HEADER_FONT
@@ -45,12 +41,10 @@ def style_header_row(ws, row, col_start, col_end):
 
 
 def create_menu_sheet(wb):
-    """Sheet-ul principal - Meniu."""
     ws = wb.active
     ws.title = "Meniu"
     ws.sheet_properties.tabColor = "2F5496"
 
-    # Setări vizuale
     ws.sheet_view.showGridLines = False
     ws.column_dimensions["A"].width = 3
     ws.column_dimensions["B"].width = 45
@@ -64,22 +58,21 @@ def create_menu_sheet(wb):
     title_cell.font = Font(name="Calibri", bold=True, size=18, color="2F5496")
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Subtitlu
     ws.merge_cells("B3:C3")
     sub_cell = ws["B3"]
     sub_cell.value = "Sistem de calcul necesar aprovizionare"
     sub_cell.font = SUBTITLE_FONT
     sub_cell.alignment = Alignment(horizontal="center")
 
-    # ── Secțiunea 1: Import Date ──
+    # -- Sectiunea 1: Import Date --
     ws.merge_cells("B5:C5")
     ws["B5"].value = "PASUL 1: IMPORT DATE"
     ws["B5"].font = Font(name="Calibri", bold=True, size=13, color="2F5496")
 
-    # Buton Import Stoc Depozit
+    # Zona buton Import Stoc Depozit
     ws.merge_cells("B7:B8")
     btn1 = ws["B7"]
-    btn1.value = "▶  IMPORT STOC DEPOZIT"
+    btn1.value = "IMPORT STOC DEPOZIT"
     btn1.font = BTN_FONT
     btn1.fill = BTN_FILL_GREEN
     btn1.alignment = BTN_ALIGN
@@ -87,14 +80,14 @@ def create_menu_sheet(wb):
 
     ws.merge_cells("C7:C8")
     desc1 = ws["C7"]
-    desc1.value = "Importă fișierul cu stocul din depozit.\nFormat: Cod Produs | Stoc"
+    desc1.value = "Importa fisierul cu stocul din depozit.\nFormat: CodProdus | Stoc"
     desc1.font = Font(name="Calibri", size=10, color="333333")
     desc1.alignment = Alignment(vertical="center", wrap_text=True)
 
-    # Buton Import Vânzări Magazin
+    # Zona buton Import Vanzari Magazin
     ws.merge_cells("B10:B11")
     btn2 = ws["B10"]
-    btn2.value = "▶  IMPORT VÂNZĂRI MAGAZIN"
+    btn2.value = "IMPORT VANZARI MAGAZIN"
     btn2.font = BTN_FONT
     btn2.fill = BTN_FILL_BLUE
     btn2.alignment = BTN_ALIGN
@@ -102,18 +95,18 @@ def create_menu_sheet(wb):
 
     ws.merge_cells("C10:C11")
     desc2 = ws["C10"]
-    desc2.value = "Importă fișierul cu vânzările magazinului.\nFormat: Cod Produs | Cantitate Vânzare"
+    desc2.value = "Importa fisierul cu vanzarile magazinului.\nFormat: CodProdus | Cantitate"
     desc2.font = Font(name="Calibri", size=10, color="333333")
     desc2.alignment = Alignment(vertical="center", wrap_text=True)
 
-    # ── Secțiunea 2: Ștergere Date ──
+    # -- Sectiunea 2: Stergere Date --
     ws.merge_cells("B13:C13")
-    ws["B13"].value = "ACȚIUNI RAPIDE"
+    ws["B13"].value = "ACTIUNI RAPIDE"
     ws["B13"].font = Font(name="Calibri", bold=True, size=13, color="2F5496")
 
     ws.merge_cells("B15:B16")
     btn3 = ws["B15"]
-    btn3.value = "✕  ȘTERGE TOATE DATELE"
+    btn3.value = "STERGE TOATE DATELE"
     btn3.font = BTN_FONT
     btn3.fill = BTN_FILL_RED
     btn3.alignment = BTN_ALIGN
@@ -121,23 +114,23 @@ def create_menu_sheet(wb):
 
     ws.merge_cells("C15:C16")
     desc3 = ws["C15"]
-    desc3.value = "Șterge toate datele importate.\nFolosește pentru a reîncepe procesul."
+    desc3.value = "Sterge toate datele importate.\nFoloseste pentru a reincepe procesul."
     desc3.font = Font(name="Calibri", size=10, color="333333")
     desc3.alignment = Alignment(vertical="center", wrap_text=True)
 
-    # ── Status ──
+    # -- Status --
     ws.merge_cells("B18:C18")
     ws["B18"].value = "STATUS IMPORT"
     ws["B18"].font = Font(name="Calibri", bold=True, size=13, color="2F5496")
 
     ws["B20"].value = "Stoc Depozit:"
     ws["B20"].font = Font(name="Calibri", bold=True, size=11)
-    ws["C20"].value = "⊘ Neîncărcat"
+    ws["C20"].value = "Neincarcat"
     ws["C20"].font = Font(name="Calibri", size=11, color="C62828")
 
-    ws["B21"].value = "Vânzări Magazin:"
+    ws["B21"].value = "Vanzari Magazin:"
     ws["B21"].font = Font(name="Calibri", bold=True, size=11)
-    ws["C21"].value = "⊘ Neîncărcat"
+    ws["C21"].value = "Neincarcat"
     ws["C21"].font = Font(name="Calibri", size=11, color="C62828")
 
     ws["B22"].value = "Ultima actualizare:"
@@ -145,17 +138,17 @@ def create_menu_sheet(wb):
     ws["C22"].value = "-"
     ws["C22"].font = Font(name="Calibri", size=11, color="666666")
 
-    # ── Instrucțiuni ──
+    # -- Instructiuni --
     ws.merge_cells("B24:C24")
-    ws["B24"].value = "INSTRUCȚIUNI"
+    ws["B24"].value = "INSTRUCTIUNI"
     ws["B24"].font = Font(name="Calibri", bold=True, size=13, color="2F5496")
 
     instructions = [
-        "1. Pregătiți fișierele de import conform șabloanelor din folderul 'Sabloane'.",
-        "2. Fișierul de stoc trebuie să aibă headerul: CodProdus | Stoc",
-        "3. Fișierul de vânzări trebuie să aibă headerul: CodProdus | Cantitate",
-        '4. Apăsați butonul corespunzător sau folosiți meniul "Necesar" din bara de sus.',
-        "5. Selectați fișierul .xlsx și așteptați confirmarea importului.",
+        "1. Pregatiti fisierele de import conform sabloanelor din folderul 'sabloane'.",
+        "2. Fisierul de stoc trebuie sa aiba headerul: CodProdus | Stoc",
+        "3. Fisierul de vanzari trebuie sa aiba headerul: CodProdus | Cantitate",
+        "4. Apasati butonul corespunzator pentru a importa datele.",
+        "5. Selectati fisierul .xlsx si asteptati confirmarea importului.",
     ]
     for i, text in enumerate(instructions):
         row = 26 + i
@@ -167,7 +160,6 @@ def create_menu_sheet(wb):
 
 
 def create_stoc_depozit_sheet(wb):
-    """Sheet pentru datele de stoc din depozit."""
     ws = wb.create_sheet("StocDepozit")
     ws.sheet_properties.tabColor = "2E7D32"
 
@@ -176,69 +168,59 @@ def create_stoc_depozit_sheet(wb):
 
     for i, (header, width) in enumerate(zip(headers, col_widths), 1):
         ws.cell(row=1, column=i, value=header)
-        ws.column_dimensions[get_column_letter(i)].width = width
+        ws.column_dimensions[chr(64 + i)].width = width
 
     style_header_row(ws, 1, 1, len(headers))
-
-    # Adaugă auto-filter
     ws.auto_filter.ref = "A1:B1"
-
     return ws
 
 
 def create_vanzari_magazin_sheet(wb):
-    """Sheet pentru datele de vânzări din magazin."""
     ws = wb.create_sheet("VanzariMagazin")
     ws.sheet_properties.tabColor = "1565C0"
 
-    headers = ["Cod Produs", "Cantitate Vânzare"]
+    headers = ["Cod Produs", "Cantitate Vanzare"]
     col_widths = [25, 22]
 
     for i, (header, width) in enumerate(zip(headers, col_widths), 1):
         ws.cell(row=1, column=i, value=header)
-        ws.column_dimensions[get_column_letter(i)].width = width
+        ws.column_dimensions[chr(64 + i)].width = width
 
     style_header_row(ws, 1, 1, len(headers))
-
     ws.auto_filter.ref = "A1:B1"
-
     return ws
 
 
 def create_compatibilitati_sheet(wb):
-    """Sheet pentru compatibilități per produs."""
     ws = wb.create_sheet("Compatibilitati")
     ws.sheet_properties.tabColor = "F57C00"
 
-    headers = ["Cod Produs", "Cod Produs Compatibil", "Observații"]
+    headers = ["Cod Produs", "Cod Produs Compatibil", "Observatii"]
     col_widths = [25, 25, 40]
 
     for i, (header, width) in enumerate(zip(headers, col_widths), 1):
         ws.cell(row=1, column=i, value=header)
-        ws.column_dimensions[get_column_letter(i)].width = width
+        ws.column_dimensions[chr(64 + i)].width = width
 
     style_header_row(ws, 1, 1, len(headers))
-
     ws.auto_filter.ref = "A1:C1"
-
     return ws
 
 
 def create_reguli_rotunjire_sheet(wb):
-    """Sheet pentru regulile de rotunjire."""
     ws = wb.create_sheet("ReguliRotunjire")
     ws.sheet_properties.tabColor = "7B1FA2"
 
-    headers = ["Categorie / Cod Produs", "Unitate Măsură", "Rotunjire La", "Tip Rotunjire"]
+    headers = ["Categorie / Cod Produs", "Unitate Masura", "Rotunjire La", "Tip Rotunjire"]
     col_widths = [30, 20, 18, 22]
 
     for i, (header, width) in enumerate(zip(headers, col_widths), 1):
         ws.cell(row=1, column=i, value=header)
-        ws.column_dimensions[get_column_letter(i)].width = width
+        ws.column_dimensions[chr(64 + i)].width = width
 
     style_header_row(ws, 1, 1, len(headers))
 
-    # Adaugă exemple
+    # Exemple
     examples = [
         ["*", "buc", 1, "Sus (Ceiling)"],
         ["EXEMPLU_COD_1", "kg", 0.5, "Sus (Ceiling)"],
@@ -253,24 +235,21 @@ def create_reguli_rotunjire_sheet(wb):
                 cell.font = Font(name="Calibri", italic=True, color="999999")
 
     ws.auto_filter.ref = "A1:D1"
-
     return ws
 
 
 def create_log_sheet(wb):
-    """Sheet pentru logul operațiunilor."""
     ws = wb.create_sheet("Log")
     ws.sheet_properties.tabColor = "757575"
 
-    headers = ["Data/Ora", "Operațiune", "Detalii", "Status"]
+    headers = ["Data/Ora", "Operatiune", "Detalii", "Status"]
     col_widths = [22, 25, 50, 15]
 
     for i, (header, width) in enumerate(zip(headers, col_widths), 1):
         ws.cell(row=1, column=i, value=header)
-        ws.column_dimensions[get_column_letter(i)].width = width
+        ws.column_dimensions[chr(64 + i)].width = width
 
     style_header_row(ws, 1, 1, len(headers))
-
     return ws
 
 
@@ -284,24 +263,15 @@ def main():
     create_reguli_rotunjire_sheet(wb)
     create_log_sheet(wb)
 
-    # Salvăm ca .xlsx (VBA se adaugă manual - vezi README)
     output_path = "NecesarAprovizionare.xlsx"
     wb.save(output_path)
-    print(f"✓ Fișierul '{output_path}' a fost generat cu succes!")
+    print(f"Fisierul '{output_path}' a fost generat cu succes!")
     print()
-    print("Sheet-uri create:")
-    print("  • Meniu          - Pagina principală cu butoane")
-    print("  • StocDepozit    - Date stoc depozit (import)")
-    print("  • VanzariMagazin - Date vânzări magazin (import)")
-    print("  • Compatibilitati - Compatibilități per produs")
-    print("  • ReguliRotunjire - Reguli de rotunjire")
-    print("  • Log            - Jurnal operațiuni")
-    print()
-    print("IMPORTANT: Pentru a activa butoanele VBA:")
-    print("  1. Deschideți fișierul în Excel")
-    print("  2. Salvați ca .xlsm (Excel Macro-Enabled Workbook)")
-    print("  3. Alt+F11 → Import File → selectați fișierele din vba_modules/")
-    print("  4. Salvați din nou")
+    print("SETUP RAPID (3 pasi):")
+    print("  1. Deschideti fisierul in Excel -> Save As -> .xlsm")
+    print("  2. Alt+F11 -> Import File -> vba_modules/ModNecesar.bas")
+    print("  3. Alt+F8 -> ConfigureazaAplicatia -> Run")
+    print("  Gata! Salvati si folositi.")
 
 
 if __name__ == "__main__":
