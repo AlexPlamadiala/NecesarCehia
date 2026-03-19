@@ -371,6 +371,7 @@ def create_necesar_sheet(wb):
     headers = [
         ("Cod Produs", 25),
         ("Vanzare", 15),
+        ("Stoc Depozit", 15),
         ("Necesar", 15),
         ("Observatii", 60),
     ]
