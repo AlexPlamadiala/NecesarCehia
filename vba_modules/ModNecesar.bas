@@ -3,13 +3,13 @@ Attribute VB_Name = "ModNecesar"
 ' MODUL: ModNecesar
 ' DESCRIERE: Modul complet pentru calculul necesarului de aprovizionare.
 '            Import stoc depozit si vanzari magazin cu validare stricta.
+'            Generare necesar cu compatibilitati si reguli de rotunjire.
 '
 ' SETUP: Dupa import, rulati macro-ul "ConfigureazaAplicatia" (Alt+F8)
-'        Acesta creeaza butoanele si configureaza totul automat.
 '==============================================================================
 Option Explicit
 
-' -- Constante pentru validare structura -----------------------------------------------
+' -- Constante -------------------------------------------------------------------
 Private Const HEADER_STOC_COL1 As String = "CodProdus"
 Private Const HEADER_STOC_COL2 As String = "Stoc"
 Private Const HEADER_VANZARI_COL1 As String = "CodProdus"
@@ -19,6 +19,12 @@ Private Const SHEET_STOC As String = "StocDepozit"
 Private Const SHEET_VANZARI As String = "VanzariMagazin"
 Private Const SHEET_MENIU As String = "Meniu"
 Private Const SHEET_LOG As String = "Log"
+Private Const SHEET_COMPAT As String = "Compatibilitati"
+Private Const SHEET_ROTUNJIRE As String = "ReguliRotunjire"
+Private Const SHEET_NECESAR As String = "Necesar"
+
+' Randul de unde incepe lista de produse in sheet-ul ReguliRotunjire
+Private Const ROTUNJIRE_PRODUSE_START As Long = 8
 
 '==============================================================================
 ' CONFIGURARE APLICATIE - RULATI O SINGURA DATA DUPA IMPORT
@@ -37,68 +43,51 @@ Public Sub ConfigureazaAplicatia()
     Next shp
 
     ' -- Buton 1: Import Stoc Depozit --
-    Dim btn1 As Shape
-    Set btn1 = wsMeniu.Shapes.AddFormControl( _
-        xlButtonControl, _
-        wsMeniu.Range("B7").Left, _
-        wsMeniu.Range("B7").Top, _
-        wsMeniu.Range("B8").Left + wsMeniu.Range("B8").Width - wsMeniu.Range("B7").Left, _
-        wsMeniu.Range("B8").Top + wsMeniu.Range("B8").Height - wsMeniu.Range("B7").Top)
-    With btn1
-        .Name = "btnImportStoc"
-        .OnAction = "ImportStocDepozit"
-        .TextFrame.Characters.Text = "IMPORT STOC DEPOZIT"
-        .TextFrame.Characters.Font.Size = 12
-        .TextFrame.Characters.Font.Bold = True
-    End With
+    CreateButton wsMeniu, "btnImportStoc", "ImportStocDepozit", _
+                 "IMPORT STOC DEPOZIT", "B7", "B8"
 
     ' -- Buton 2: Import Vanzari Magazin --
-    Dim btn2 As Shape
-    Set btn2 = wsMeniu.Shapes.AddFormControl( _
-        xlButtonControl, _
-        wsMeniu.Range("B10").Left, _
-        wsMeniu.Range("B10").Top, _
-        wsMeniu.Range("B11").Left + wsMeniu.Range("B11").Width - wsMeniu.Range("B10").Left, _
-        wsMeniu.Range("B11").Top + wsMeniu.Range("B11").Height - wsMeniu.Range("B10").Top)
-    With btn2
-        .Name = "btnImportVanzari"
-        .OnAction = "ImportVanzariMagazin"
-        .TextFrame.Characters.Text = "IMPORT VANZARI MAGAZIN"
-        .TextFrame.Characters.Font.Size = 12
-        .TextFrame.Characters.Font.Bold = True
-    End With
+    CreateButton wsMeniu, "btnImportVanzari", "ImportVanzariMagazin", _
+                 "IMPORT VANZARI MAGAZIN", "B10", "B11"
 
-    ' -- Buton 3: Sterge Toate Datele --
-    Dim btn3 As Shape
-    Set btn3 = wsMeniu.Shapes.AddFormControl( _
-        xlButtonControl, _
-        wsMeniu.Range("B15").Left, _
-        wsMeniu.Range("B15").Top, _
-        wsMeniu.Range("B16").Left + wsMeniu.Range("B16").Width - wsMeniu.Range("B15").Left, _
-        wsMeniu.Range("B16").Top + wsMeniu.Range("B16").Height - wsMeniu.Range("B15").Top)
-    With btn3
-        .Name = "btnSterge"
-        .OnAction = "StergeToateDatele"
-        .TextFrame.Characters.Text = "STERGE TOATE DATELE"
-        .TextFrame.Characters.Font.Size = 12
-        .TextFrame.Characters.Font.Bold = True
-    End With
+    ' -- Buton 3: Generare Necesar --
+    CreateButton wsMeniu, "btnGenNecesar", "GenerareNecesar", _
+                 "GENERARE NECESAR", "B14", "B15"
 
-    ' Configureaza evenimentul Workbook_Open prin auto-navigare
+    ' -- Buton 4: Sterge Toate Datele --
+    CreateButton wsMeniu, "btnSterge", "StergeToateDatele", _
+                 "STERGE TOATE DATELE", "B18", "B19"
+
     wsMeniu.Range("B2").Select
 
-    MsgBox "Configurare completa!" & vbNewLine & vbNewLine & _
-           "Butoane create:" & vbNewLine & _
-           "  - IMPORT STOC DEPOZIT" & vbNewLine & _
-           "  - IMPORT VANZARI MAGAZIN" & vbNewLine & _
-           "  - STERGE TOATE DATELE" & vbNewLine & vbNewLine & _
+    MsgBox "Configurare completa! Butoanele au fost create." & vbNewLine & _
            "Salvati fisierul si puteti incepe lucrul.", _
-           vbInformation, "Configurare Aplicatie"
+           vbInformation, "Configurare"
 
     Exit Sub
-
 ErrHandler:
     MsgBox "Eroare la configurare: " & Err.Description, vbCritical
+End Sub
+
+Private Sub CreateButton(ws As Worksheet, btnName As String, macroName As String, _
+                          caption As String, cellTopLeft As String, cellBottomRight As String)
+    Dim btn As Shape
+    Dim rTop As Range, rBot As Range
+    Set rTop = ws.Range(cellTopLeft)
+    Set rBot = ws.Range(cellBottomRight)
+
+    Set btn = ws.Shapes.AddFormControl( _
+        xlButtonControl, _
+        rTop.Left, rTop.Top, _
+        rBot.Left + rBot.Width - rTop.Left, _
+        rBot.Top + rBot.Height - rTop.Top)
+    With btn
+        .Name = btnName
+        .OnAction = macroName
+        .TextFrame.Characters.Text = caption
+        .TextFrame.Characters.Font.Size = 12
+        .TextFrame.Characters.Font.Bold = True
+    End With
 End Sub
 
 '==============================================================================
@@ -111,62 +100,35 @@ Public Sub ImportStocDepozit()
     filePath = SelectImportFile("Selectati fisierul cu STOC DEPOZIT")
     If filePath = "" Then Exit Sub
 
-    ' Validare structura
     If Not ValidateFileStructure(filePath, HEADER_STOC_COL1, HEADER_STOC_COL2) Then
-        MsgBox "Fisierul selectat NU are structura corecta!" & vbNewLine & vbNewLine & _
-               "Structura asteptata (primele 2 coloane, randul 1):" & vbNewLine & _
-               "  Coloana A: " & HEADER_STOC_COL1 & vbNewLine & _
-               "  Coloana B: " & HEADER_STOC_COL2 & vbNewLine & vbNewLine & _
-               "Verificati fisierul si incercati din nou." & vbNewLine & _
-               "Puteti folosi sablonul din folderul 'Sabloane'.", _
-               vbCritical, "Eroare Structura Fisier"
-        WriteLog "Import Stoc Depozit", "Structura fisierului invalida: " & filePath, "EROARE"
+        MsgBox "Fisierul nu are structura corecta!" & vbNewLine & _
+               "Headerele asteptate: CodProdus | Stoc", _
+               vbCritical, "Eroare"
         Exit Sub
     End If
 
-    ' Confirmare inainte de import
-    Dim rowCount As Long
-    rowCount = CountDataRows(filePath)
-
-    Dim answer As VbMsgBoxResult
-    answer = MsgBox("Se vor importa " & rowCount & " produse in sheet-ul Stoc Depozit." & vbNewLine & vbNewLine & _
-                    "Datele existente vor fi inlocuite." & vbNewLine & vbNewLine & _
-                    "Continuati?", _
-                    vbQuestion + vbYesNo, "Confirmare Import Stoc")
-
-    If answer = vbNo Then Exit Sub
-
-    ' Executa importul
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
 
     ClearSheetData SHEET_STOC
     Dim importedRows As Long
     importedRows = ImportDataFromFile(filePath, SHEET_STOC)
-
-    ' Actualizeaza statusul pe Meniu
     UpdateImportStatus SHEET_STOC, importedRows
 
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
 
-    WriteLog "Import Stoc Depozit", "Importate " & importedRows & " randuri din: " & filePath, "OK"
+    WriteLog "Import Stoc", "Importate " & importedRows & " produse", "OK"
 
-    MsgBox "Import realizat cu succes!" & vbNewLine & vbNewLine & _
-           "Produse importate: " & importedRows, _
-           vbInformation, "Import Stoc Depozit"
-
-    ' Navigheaza la sheet-ul cu date
-    ThisWorkbook.Sheets(SHEET_STOC).Activate
+    ' Ramanem pe Meniu
+    ThisWorkbook.Sheets(SHEET_MENIU).Activate
+    MsgBox "Stoc depozit importat: " & importedRows & " produse.", vbInformation, "Import OK"
 
     Exit Sub
-
 ErrHandler:
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
-    WriteLog "Import Stoc Depozit", "Eroare: " & Err.Description, "EROARE"
-    MsgBox "A aparut o eroare la import:" & vbNewLine & Err.Description, _
-           vbCritical, "Eroare Import"
+    MsgBox "Eroare la import: " & Err.Description, vbCritical, "Eroare"
 End Sub
 
 '==============================================================================
@@ -179,123 +141,409 @@ Public Sub ImportVanzariMagazin()
     filePath = SelectImportFile("Selectati fisierul cu VANZARI MAGAZIN")
     If filePath = "" Then Exit Sub
 
-    ' Validare structura
     If Not ValidateFileStructure(filePath, HEADER_VANZARI_COL1, HEADER_VANZARI_COL2) Then
-        MsgBox "Fisierul selectat NU are structura corecta!" & vbNewLine & vbNewLine & _
-               "Structura asteptata (primele 2 coloane, randul 1):" & vbNewLine & _
-               "  Coloana A: " & HEADER_VANZARI_COL1 & vbNewLine & _
-               "  Coloana B: " & HEADER_VANZARI_COL2 & vbNewLine & vbNewLine & _
-               "Verificati fisierul si incercati din nou." & vbNewLine & _
-               "Puteti folosi sablonul din folderul 'Sabloane'.", _
-               vbCritical, "Eroare Structura Fisier"
-        WriteLog "Import Vanzari Magazin", "Structura fisierului invalida: " & filePath, "EROARE"
+        MsgBox "Fisierul nu are structura corecta!" & vbNewLine & _
+               "Headerele asteptate: CodProdus | Cantitate", _
+               vbCritical, "Eroare"
         Exit Sub
     End If
 
-    ' Confirmare
-    Dim rowCount As Long
-    rowCount = CountDataRows(filePath)
-
-    Dim answer As VbMsgBoxResult
-    answer = MsgBox("Se vor importa " & rowCount & " produse in sheet-ul Vanzari Magazin." & vbNewLine & vbNewLine & _
-                    "Datele existente vor fi inlocuite." & vbNewLine & vbNewLine & _
-                    "Continuati?", _
-                    vbQuestion + vbYesNo, "Confirmare Import Vanzari")
-
-    If answer = vbNo Then Exit Sub
-
-    ' Executa importul
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
 
     ClearSheetData SHEET_VANZARI
     Dim importedRows As Long
     importedRows = ImportDataFromFile(filePath, SHEET_VANZARI)
-
     UpdateImportStatus SHEET_VANZARI, importedRows
 
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
 
-    WriteLog "Import Vanzari Magazin", "Importate " & importedRows & " randuri din: " & filePath, "OK"
+    WriteLog "Import Vanzari", "Importate " & importedRows & " produse", "OK"
 
-    MsgBox "Import realizat cu succes!" & vbNewLine & vbNewLine & _
-           "Produse importate: " & importedRows, _
-           vbInformation, "Import Vanzari Magazin"
-
-    ThisWorkbook.Sheets(SHEET_VANZARI).Activate
+    ThisWorkbook.Sheets(SHEET_MENIU).Activate
+    MsgBox "Vanzari magazin importate: " & importedRows & " produse.", vbInformation, "Import OK"
 
     Exit Sub
-
 ErrHandler:
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
-    WriteLog "Import Vanzari Magazin", "Eroare: " & Err.Description, "EROARE"
-    MsgBox "A aparut o eroare la import:" & vbNewLine & Err.Description, _
-           vbCritical, "Eroare Import"
+    MsgBox "Eroare la import: " & Err.Description, vbCritical, "Eroare"
 End Sub
 
 '==============================================================================
-' STERGE TOATE DATELE IMPORTATE
+' STERGE TOATE DATELE
 '==============================================================================
 Public Sub StergeToateDatele()
-    Dim answer As VbMsgBoxResult
-    answer = MsgBox("ATENTIE! Se vor sterge TOATE datele importate:" & vbNewLine & vbNewLine & _
-                    "  - Stoc Depozit" & vbNewLine & _
-                    "  - Vanzari Magazin" & vbNewLine & vbNewLine & _
-                    "Aceasta actiune este ireversibila!" & vbNewLine & vbNewLine & _
-                    "Sigur doriti sa continuati?", _
-                    vbExclamation + vbYesNo, "Confirmare Stergere")
-
-    If answer = vbNo Then Exit Sub
-
-    ' A doua confirmare pentru siguranta
-    answer = MsgBox("Ultima confirmare: Sigur doriti sa STERGETI toate datele?", _
-                    vbCritical + vbYesNo, "Confirmare Finala")
-
-    If answer = vbNo Then Exit Sub
+    If MsgBox("Stergeti toate datele importate si necesarul generat?", _
+              vbQuestion + vbYesNo, "Confirmare") = vbNo Then Exit Sub
 
     ClearSheetData SHEET_STOC
     ClearSheetData SHEET_VANZARI
+    ClearSheetData SHEET_NECESAR
 
-    ' Resetare status
     Dim wsMeniu As Worksheet
     Set wsMeniu = ThisWorkbook.Sheets(SHEET_MENIU)
-
     wsMeniu.Range("C20").Value = "Neincarcat"
     wsMeniu.Range("C20").Font.Color = RGB(198, 40, 40)
-
     wsMeniu.Range("C21").Value = "Neincarcat"
     wsMeniu.Range("C21").Font.Color = RGB(198, 40, 40)
-
     wsMeniu.Range("C22").Value = "-"
+    wsMeniu.Range("C23").Value = "Negenerat"
+    wsMeniu.Range("C23").Font.Color = RGB(198, 40, 40)
 
-    WriteLog "Stergere Date", "Toate datele importate au fost sterse.", "OK"
-
+    WriteLog "Stergere", "Toate datele au fost sterse.", "OK"
     wsMeniu.Activate
-
-    MsgBox "Toate datele au fost sterse cu succes!", _
-           vbInformation, "Stergere Completa"
+    MsgBox "Datele au fost sterse.", vbInformation, "Stergere"
 End Sub
 
 '==============================================================================
-' FUNCTII AUXILIARE (PRIVATE)
+' GENERARE NECESAR APROVIZIONARE
+'==============================================================================
+Public Sub GenerareNecesar()
+    On Error GoTo ErrHandler
+
+    ' Verificam ca avem date de vanzari
+    Dim wsVanzari As Worksheet
+    Set wsVanzari = ThisWorkbook.Sheets(SHEET_VANZARI)
+    If wsVanzari.Cells(2, 1).Value = "" Then
+        MsgBox "Nu exista date de vanzari importate!", vbExclamation, "Atentie"
+        Exit Sub
+    End If
+
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+
+    ' 1. Incarcam dictionarele
+    Dim dictCompat As Object  ' CodOriginal -> CodCompatibil
+    Set dictCompat = LoadCompatibilitati()
+
+    Dim dictRotunjire As Object  ' CodProdus -> CategorieRotunjire (Long)
+    Set dictRotunjire = LoadReguliRotunjire()
+
+    Dim dictStoc As Object  ' CodProdus -> StocDepozit (Long)
+    Set dictStoc = LoadStocDepozit()
+
+    ' 2. Citim vanzarile si aplicam compatibilitatile
+    Dim dictNecesar As Object  ' CodFinal -> cantitate totala
+    Set dictNecesar = CreateObject("Scripting.Dictionary")
+
+    Dim dictOrigCodes As Object  ' CodFinal -> colectie de coduri originale
+    Set dictOrigCodes = CreateObject("Scripting.Dictionary")
+
+    Dim lastRowV As Long
+    lastRowV = wsVanzari.Cells(wsVanzari.Rows.Count, 1).End(xlUp).Row
+
+    Dim r As Long
+    Dim codOriginal As String
+    Dim codFinal As String
+    Dim cantitate As Long
+
+    For r = 2 To lastRowV
+        codOriginal = Trim(CStr(wsVanzari.Cells(r, 1).Value))
+        cantitate = CLng(wsVanzari.Cells(r, 2).Value)
+
+        If codOriginal = "" Then GoTo NextRow
+        If cantitate <= 0 Then GoTo NextRow
+
+        ' Verificam compatibilitate
+        If dictCompat.Exists(codOriginal) Then
+            codFinal = CStr(dictCompat(codOriginal))
+        Else
+            codFinal = codOriginal
+        End If
+
+        ' Agregam cantitatile per cod final
+        If dictNecesar.Exists(codFinal) Then
+            dictNecesar(codFinal) = dictNecesar(codFinal) + cantitate
+        Else
+            dictNecesar.Add codFinal, cantitate
+        End If
+
+        ' Tinem evidenta codurilor originale (doar daca s-a facut inlocuire)
+        If codFinal <> codOriginal Then
+            If Not dictOrigCodes.Exists(codFinal) Then
+                dictOrigCodes.Add codFinal, codOriginal & "(" & cantitate & ")"
+            Else
+                dictOrigCodes(codFinal) = dictOrigCodes(codFinal) & ", " & codOriginal & "(" & cantitate & ")"
+            End If
+        End If
+NextRow:
+    Next r
+
+    ' 3. Aplicam rotunjirea si scriem rezultatul
+    Dim wsNecesar As Worksheet
+    Set wsNecesar = ThisWorkbook.Sheets(SHEET_NECESAR)
+    ClearSheetData SHEET_NECESAR
+
+    Dim keys As Variant
+    keys = dictNecesar.keys
+
+    Dim outRow As Long
+    outRow = 2
+
+    Dim i As Long
+    Dim vanzareTotal As Long
+    Dim necesarFinal As Long
+    Dim catRotunjire As Long
+    Dim stocDep As Long
+    Dim obs As String
+
+    For i = 0 To dictNecesar.Count - 1
+        codFinal = CStr(keys(i))
+        vanzareTotal = CLng(dictNecesar(codFinal))
+
+        ' Determinam categoria de rotunjire
+        catRotunjire = 0
+        If dictRotunjire.Exists(codFinal) Then
+            catRotunjire = CLng(dictRotunjire(codFinal))
+        End If
+
+        ' Determinam stocul de depozit (pentru cat 4)
+        stocDep = 0
+        If dictStoc.Exists(codFinal) Then
+            stocDep = CLng(dictStoc(codFinal))
+        End If
+
+        ' Aplicam rotunjirea
+        If catRotunjire > 0 Then
+            necesarFinal = ApplyRounding(vanzareTotal, catRotunjire, stocDep)
+        Else
+            necesarFinal = vanzareTotal
+        End If
+
+        ' Construim observatii
+        obs = ""
+        If dictOrigCodes.Exists(codFinal) Then
+            obs = "Compatibil: " & CStr(dictOrigCodes(codFinal))
+        End If
+        If catRotunjire > 0 And necesarFinal <> vanzareTotal Then
+            If obs <> "" Then obs = obs & " | "
+            obs = obs & "Rotunjire cat." & catRotunjire & " (" & vanzareTotal & " -> " & necesarFinal & ")"
+        ElseIf catRotunjire > 0 And necesarFinal = vanzareTotal Then
+            If obs <> "" Then obs = obs & " | "
+            obs = obs & "Rotunjire cat." & catRotunjire & " (neschimbat)"
+        End If
+
+        ' Scriem in sheet
+        wsNecesar.Cells(outRow, 1).Value = codFinal
+        wsNecesar.Cells(outRow, 2).Value = vanzareTotal
+        wsNecesar.Cells(outRow, 3).Value = necesarFinal
+        wsNecesar.Cells(outRow, 4).Value = obs
+
+        outRow = outRow + 1
+    Next i
+
+    ' Formatare
+    Dim lastOut As Long
+    lastOut = outRow - 1
+    If lastOut >= 2 Then
+        Dim rng As Range
+        Set rng = wsNecesar.Range("A2:D" & lastOut)
+        rng.HorizontalAlignment = xlCenter
+        wsNecesar.Range("D2:D" & lastOut).HorizontalAlignment = xlLeft
+
+        ' Auto-filter
+        If wsNecesar.AutoFilterMode Then wsNecesar.AutoFilterMode = False
+        wsNecesar.Range("A1:D" & lastOut).AutoFilter
+    End If
+
+    ' Actualizam statusul
+    Dim wsMeniu As Worksheet
+    Set wsMeniu = ThisWorkbook.Sheets(SHEET_MENIU)
+    wsMeniu.Range("C23").Value = "Generat (" & dictNecesar.Count & " produse)"
+    wsMeniu.Range("C23").Font.Color = RGB(46, 125, 50)
+    wsMeniu.Range("C22").Value = Format(Now, "dd.mm.yyyy hh:nn:ss")
+
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+
+    WriteLog "Generare Necesar", "Generat necesar pentru " & dictNecesar.Count & " produse", "OK"
+
+    ThisWorkbook.Sheets(SHEET_MENIU).Activate
+    MsgBox "Necesar generat: " & dictNecesar.Count & " produse.", vbInformation, "Necesar OK"
+
+    Exit Sub
+ErrHandler:
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    WriteLog "Generare Necesar", "Eroare: " & Err.Description, "EROARE"
+    MsgBox "Eroare la generare necesar: " & Err.Description, vbCritical, "Eroare"
+End Sub
+
+'==============================================================================
+' FUNCTII DE INCARCARE DATE
 '==============================================================================
 
-'------------------------------------------------------------------------------
-' Deschide dialogul de selectare fisier
-'------------------------------------------------------------------------------
+Private Function LoadCompatibilitati() As Object
+    Dim dict As Object
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(SHEET_COMPAT)
+
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+
+    Dim r As Long
+    Dim codOrig As String, codCompat As String
+    For r = 2 To lastRow
+        codOrig = Trim(CStr(ws.Cells(r, 1).Value))
+        codCompat = Trim(CStr(ws.Cells(r, 2).Value))
+        If codOrig <> "" And codCompat <> "" Then
+            If Not dict.Exists(codOrig) Then
+                dict.Add codOrig, codCompat
+            End If
+        End If
+    Next r
+
+    Set LoadCompatibilitati = dict
+End Function
+
+Private Function LoadReguliRotunjire() As Object
+    Dim dict As Object
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(SHEET_ROTUNJIRE)
+
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+
+    Dim r As Long
+    Dim cod As String, cat As Long
+    For r = ROTUNJIRE_PRODUSE_START To lastRow
+        cod = Trim(CStr(ws.Cells(r, 1).Value))
+        If cod <> "" And IsNumeric(ws.Cells(r, 3).Value) Then
+            cat = CLng(ws.Cells(r, 3).Value)
+            If cat >= 1 And cat <= 4 Then
+                If Not dict.Exists(cod) Then
+                    dict.Add cod, cat
+                End If
+            End If
+        End If
+    Next r
+
+    Set LoadReguliRotunjire = dict
+End Function
+
+Private Function LoadStocDepozit() As Object
+    Dim dict As Object
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(SHEET_STOC)
+
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+
+    Dim r As Long
+    Dim cod As String
+    For r = 2 To lastRow
+        cod = Trim(CStr(ws.Cells(r, 1).Value))
+        If cod <> "" Then
+            If Not dict.Exists(cod) Then
+                dict.Add cod, CLng(ws.Cells(r, 2).Value)
+            End If
+        End If
+    Next r
+
+    Set LoadStocDepozit = dict
+End Function
+
+'==============================================================================
+' REGULI DE ROTUNJIRE
+'==============================================================================
+' Cat 1: Rotunjire la multiplu de 10, minim 10
+'        Formula: IF(val<5, 10, IF(MOD(val,10)<5, FLOOR(val,10), CEILING(val,10)))
+'
+' Cat 2: Rotunjire la numar par (multiplu de 2)
+'        Formula: IF(MOD(val,2)=0, val, val+1)
+'
+' Cat 3: Rotunjire la multiplu de 5 (valori 1-2 devin 0)
+'        Formula: IF(MOD(val,5)<3, FLOOR(val,5), CEILING(val,5))
+'
+' Cat 4: Rotunjire la multiplu de 5, minim 5 daca stoc depozit < 3
+'        Formula: Ca si cat 3, dar daca rezultat=0 si stoc<3 atunci 5
+'==============================================================================
+
+Private Function ApplyRounding(ByVal val As Long, ByVal category As Long, _
+                                ByVal depotStock As Long) As Long
+    Dim result As Long
+
+    ' Daca vanzarea e 0, necesarul e 0
+    If val = 0 Then
+        ApplyRounding = 0
+        Exit Function
+    End If
+
+    Select Case category
+
+        Case 1  ' Multiplu de 10, minim 10
+            If val < 5 Then
+                result = 10
+            ElseIf (val Mod 10) < 5 Then
+                result = (val \ 10) * 10          ' FLOOR la 10
+            Else
+                If (val Mod 10) = 0 Then
+                    result = val
+                Else
+                    result = (val \ 10) * 10 + 10 ' CEILING la 10
+                End If
+            End If
+            If result < 10 Then result = 10
+
+        Case 2  ' Numar par
+            If (val Mod 2) = 0 Then
+                result = val
+            Else
+                result = val + 1
+            End If
+
+        Case 3  ' Multiplu de 5, valori mici devin 0
+            If (val Mod 5) < 3 Then
+                result = (val \ 5) * 5            ' FLOOR la 5
+            Else
+                If (val Mod 5) = 0 Then
+                    result = val
+                Else
+                    result = (val \ 5) * 5 + 5    ' CEILING la 5
+                End If
+            End If
+
+        Case 4  ' Multiplu de 5, minim 5 daca stoc depozit scazut
+            If (val Mod 5) < 3 Then
+                result = (val \ 5) * 5
+            Else
+                If (val Mod 5) = 0 Then
+                    result = val
+                Else
+                    result = (val \ 5) * 5 + 5
+                End If
+            End If
+            If result = 0 And depotStock < 3 Then result = 5
+
+        Case Else
+            result = val
+
+    End Select
+
+    ApplyRounding = result
+End Function
+
+'==============================================================================
+' FUNCTII AUXILIARE
+'==============================================================================
+
 Private Function SelectImportFile(ByVal dialogTitle As String) As String
     Dim fd As FileDialog
     Set fd = Application.FileDialog(msoFileDialogFilePicker)
-
     With fd
         .Title = dialogTitle
         .Filters.Clear
         .Filters.Add "Fisiere Excel", "*.xlsx;*.xls"
         .AllowMultiSelect = False
         .InitialFileName = ThisWorkbook.Path & "\"
-
         If .Show = -1 Then
             SelectImportFile = .SelectedItems(1)
         Else
@@ -304,106 +552,51 @@ Private Function SelectImportFile(ByVal dialogTitle As String) As String
     End With
 End Function
 
-'------------------------------------------------------------------------------
-' Valideaza structura fisierului importat
-' Verifica daca primele 2 coloane din randul 1 au headerele asteptate
-'------------------------------------------------------------------------------
 Private Function ValidateFileStructure(ByVal filePath As String, _
                                         ByVal expectedCol1 As String, _
                                         ByVal expectedCol2 As String) As Boolean
     ValidateFileStructure = False
-
     Dim wbSource As Workbook
-    Dim wsSource As Worksheet
 
-    ' Deschidem fisierul in mod read-only si fara update links
     Application.DisplayAlerts = False
     Set wbSource = Workbooks.Open(Filename:=filePath, ReadOnly:=True, UpdateLinks:=0)
     Application.DisplayAlerts = True
 
-    Set wsSource = wbSource.Sheets(1)
-
-    ' Citim headerele si le curatam de spatii
     Dim h1 As String, h2 As String
-    h1 = CleanHeader(CStr(wsSource.Cells(1, 1).Value))
-    h2 = CleanHeader(CStr(wsSource.Cells(1, 2).Value))
+    h1 = CleanHeader(CStr(wbSource.Sheets(1).Cells(1, 1).Value))
+    h2 = CleanHeader(CStr(wbSource.Sheets(1).Cells(1, 2).Value))
 
-    ' Verificam potrivirea (case-insensitive)
     If LCase(h1) = LCase(expectedCol1) And LCase(h2) = LCase(expectedCol2) Then
-        ValidateFileStructure = True
-    End If
-
-    ' Verificare suplimentara: trebuie sa aiba cel putin 1 rand de date
-    If ValidateFileStructure Then
-        If wsSource.Cells(2, 1).Value = "" And wsSource.Cells(2, 2).Value = "" Then
-            ValidateFileStructure = False
-            MsgBox "Fisierul are structura corecta dar nu contine date!", _
-                   vbExclamation, "Fisier Gol"
+        If wbSource.Sheets(1).Cells(2, 1).Value <> "" Then
+            ValidateFileStructure = True
         End If
     End If
 
     wbSource.Close SaveChanges:=False
 End Function
 
-'------------------------------------------------------------------------------
-' Curata un header de spatii, BOM, caractere invizibile
-'------------------------------------------------------------------------------
 Private Function CleanHeader(ByVal s As String) As String
     s = Trim(s)
-    ' Elimina BOM (Byte Order Mark) daca exista
     If Len(s) > 0 Then
         If AscW(Left(s, 1)) = 65279 Then s = Mid(s, 2)
     End If
-    ' Elimina spatii non-breaking
     s = Replace(s, Chr(160), "")
-    s = Trim(s)
-    CleanHeader = s
+    CleanHeader = Trim(s)
 End Function
 
-'------------------------------------------------------------------------------
-' Numara randurile de date din fisierul sursa (fara header)
-'------------------------------------------------------------------------------
-Private Function CountDataRows(ByVal filePath As String) As Long
-    Dim wbSource As Workbook
-    Dim wsSource As Worksheet
-
-    Application.DisplayAlerts = False
-    Set wbSource = Workbooks.Open(Filename:=filePath, ReadOnly:=True, UpdateLinks:=0)
-    Application.DisplayAlerts = True
-
-    Set wsSource = wbSource.Sheets(1)
-
-    Dim lastRow As Long
-    lastRow = wsSource.Cells(wsSource.Rows.Count, 1).End(xlUp).Row
-
-    If lastRow <= 1 Then
-        CountDataRows = 0
-    Else
-        CountDataRows = lastRow - 1
-    End If
-
-    wbSource.Close SaveChanges:=False
-End Function
-
-'------------------------------------------------------------------------------
-' Importa datele din fisierul sursa in sheet-ul destinatie
-' Returneaza numarul de randuri importate
-'------------------------------------------------------------------------------
 Private Function ImportDataFromFile(ByVal filePath As String, _
                                      ByVal destSheetName As String) As Long
     Dim wbSource As Workbook
-    Dim wsSource As Worksheet
     Dim wsDest As Worksheet
 
     Application.DisplayAlerts = False
     Set wbSource = Workbooks.Open(Filename:=filePath, ReadOnly:=True, UpdateLinks:=0)
     Application.DisplayAlerts = True
 
-    Set wsSource = wbSource.Sheets(1)
     Set wsDest = ThisWorkbook.Sheets(destSheetName)
 
     Dim lastRow As Long
-    lastRow = wsSource.Cells(wsSource.Rows.Count, 1).End(xlUp).Row
+    lastRow = wbSource.Sheets(1).Cells(wbSource.Sheets(1).Rows.Count, 1).End(xlUp).Row
 
     If lastRow < 2 Then
         wbSource.Close SaveChanges:=False
@@ -411,58 +604,40 @@ Private Function ImportDataFromFile(ByVal filePath As String, _
         Exit Function
     End If
 
-    ' Copiem datele (fara header) - doar primele 2 coloane
-    Dim sourceRange As Range
-    Set sourceRange = wsSource.Range("A2:B" & lastRow)
-
-    Dim destRange As Range
-    Set destRange = wsDest.Range("A2:B" & (lastRow))
-
-    sourceRange.Copy
-    destRange.PasteSpecial xlPasteValues
+    wbSource.Sheets(1).Range("A2:B" & lastRow).Copy
+    wsDest.Range("A2").PasteSpecial xlPasteValues
     Application.CutCopyMode = False
 
-    ' Formatam datele importate
+    ' Formatare
     Dim r As Long
     For r = 2 To lastRow
         wsDest.Cells(r, 1).HorizontalAlignment = xlCenter
         wsDest.Cells(r, 2).HorizontalAlignment = xlCenter
-        wsDest.Cells(r, 2).NumberFormat = "#,##0.00"
+        wsDest.Cells(r, 2).NumberFormat = "#,##0"
     Next r
 
-    ' Actualizam auto-filter
     If wsDest.AutoFilterMode Then wsDest.AutoFilterMode = False
     wsDest.Range("A1:B" & lastRow).AutoFilter
 
     wbSource.Close SaveChanges:=False
-
     ImportDataFromFile = lastRow - 1
 End Function
 
-'------------------------------------------------------------------------------
-' Sterge datele dintr-un sheet (pastreaza headerul)
-'------------------------------------------------------------------------------
 Private Sub ClearSheetData(ByVal sheetName As String)
     Dim ws As Worksheet
     Set ws = ThisWorkbook.Sheets(sheetName)
-
     Dim lastRow As Long
     lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-
     If lastRow > 1 Then
-        ws.Range("A2:B" & lastRow).Clear
+        ws.Rows("2:" & lastRow).Clear
     End If
 End Sub
 
-'------------------------------------------------------------------------------
-' Actualizeaza statusul de import pe sheet-ul Meniu
-'------------------------------------------------------------------------------
 Private Sub UpdateImportStatus(ByVal importType As String, ByVal rowCount As Long)
     Dim wsMeniu As Worksheet
     Set wsMeniu = ThisWorkbook.Sheets(SHEET_MENIU)
 
     Dim statusCell As Range
-
     If importType = SHEET_STOC Then
         Set statusCell = wsMeniu.Range("C20")
     ElseIf importType = SHEET_VANZARI Then
@@ -472,19 +647,14 @@ Private Sub UpdateImportStatus(ByVal importType As String, ByVal rowCount As Lon
     End If
 
     statusCell.Value = "Incarcat (" & rowCount & " produse)"
-    statusCell.Font.Color = RGB(46, 125, 50) ' Verde
+    statusCell.Font.Color = RGB(46, 125, 50)
 
-    ' Actualizeaza data ultimei modificari
     wsMeniu.Range("C22").Value = Format(Now, "dd.mm.yyyy hh:nn:ss")
     wsMeniu.Range("C22").Font.Color = RGB(51, 51, 51)
 End Sub
 
-'------------------------------------------------------------------------------
-' Scrie o intrare in sheet-ul de Log
-'------------------------------------------------------------------------------
 Private Sub WriteLog(ByVal operatiune As String, ByVal detalii As String, ByVal status As String)
     On Error Resume Next
-
     Dim wsLog As Worksheet
     Set wsLog = ThisWorkbook.Sheets(SHEET_LOG)
 
@@ -496,7 +666,6 @@ Private Sub WriteLog(ByVal operatiune As String, ByVal detalii As String, ByVal 
     wsLog.Cells(nextRow, 3).Value = detalii
     wsLog.Cells(nextRow, 4).Value = status
 
-    ' Colorare status
     If status = "OK" Then
         wsLog.Cells(nextRow, 4).Font.Color = RGB(46, 125, 50)
     ElseIf status = "EROARE" Then
@@ -505,6 +674,5 @@ Private Sub WriteLog(ByVal operatiune As String, ByVal detalii As String, ByVal 
 
     wsLog.Cells(nextRow, 1).HorizontalAlignment = xlCenter
     wsLog.Cells(nextRow, 4).HorizontalAlignment = xlCenter
-
     On Error GoTo 0
 End Sub
