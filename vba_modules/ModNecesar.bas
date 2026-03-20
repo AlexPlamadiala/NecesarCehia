@@ -8,7 +8,7 @@ Attribute VB_Name = "ModNecesar"
 ' FORMULA NECESAR:
 '   MedieZilnica = Vanzare / ZileVanzare
 '   NecesarBrut  = (MedieZilnica * ZileNecesar) - StocMagazin
-'   Necesar      = MAX(0, CEILING(NecesarBrut)) -> apoi rotunjire categorie
+'   Necesar      = MAX(0, ROUND(NecesarBrut)) -> apoi rotunjire categorie
 '
 ' SETARI (pe sheet-ul Meniu):
 '   C33 = Zile vanzare (pe cate zile e vanzarea importata)
@@ -201,7 +201,7 @@ End Sub
 ' Formula:
 '   MedieZilnica = VanzareTotal / ZileVanzare
 '   NecesarBrut  = (MedieZilnica * ZileNecesar) - StocMagazin
-'   Necesar      = MAX(0, rotunjire_sus_la_intreg(NecesarBrut))
+'   Necesar      = MAX(0, rotunjire_clasica(NecesarBrut))
 '   apoi se aplica rotunjirea pe categorii daca exista
 '==============================================================================
 Public Sub GenerareNecesar()
@@ -376,11 +376,11 @@ NextVanzare:
         ' Necesar brut = (medie * zile_necesar) - stoc
         necesarBrut = (medieZilnica * CDbl(zileNecesar)) - CDbl(stocMag)
 
-        ' Rotunjim in sus la numar intreg, minim 0
+        ' Rotunjire clasica: >= 0.5 in sus, < 0.5 in jos, minim 0
         If necesarBrut <= 0 Then
             necesarRotunjit = 0
         Else
-            necesarRotunjit = -Int(-necesarBrut)  ' Ceiling in VBA
+            necesarRotunjit = Int(necesarBrut + 0.5)  ' Round half up
         End If
 
         ' Categorie rotunjire
