@@ -253,6 +253,10 @@ Public Sub GenerareNecesar()
     Dim dictCompat As Object
     Set dictCompat = LoadDictFromSheet(SHEET_COMPAT, 2, 1, 3)
 
+    ' Denumiri produse originale: CodOriginal (col A=1) -> DenumireOriginal (col B=2)
+    Dim dictDenumireOrig As Object
+    Set dictDenumireOrig = LoadDictFromSheet(SHEET_COMPAT, 2, 1, 2)
+
     ' Reguli rotunjire: CodProdus (col A=1) -> Categorie (col C=3)
     Dim dictRotunjire As Object
     Set dictRotunjire = LoadDictFromSheet(SHEET_ROTUNJIRE, ROTUNJIRE_PRODUSE_START, 1, 3)
@@ -326,10 +330,16 @@ Public Sub GenerareNecesar()
 
         ' Evidenta coduri originale (doar la inlocuire)
         If codFinal <> codOriginal Then
-            If Not dictOrigCodes.Exists(codFinal) Then
-                dictOrigCodes.Add codFinal, codOriginal & "(" & cantitate & ")"
+            Dim denumireOrig As String
+            If dictDenumireOrig.Exists(codOriginal) Then
+                denumireOrig = CStr(dictDenumireOrig(codOriginal))
             Else
-                dictOrigCodes(codFinal) = dictOrigCodes(codFinal) & ", " & codOriginal & "(" & cantitate & ")"
+                denumireOrig = codOriginal
+            End If
+            If Not dictOrigCodes.Exists(codFinal) Then
+                dictOrigCodes.Add codFinal, codOriginal & " - " & denumireOrig
+            Else
+                dictOrigCodes(codFinal) = dictOrigCodes(codFinal) & ", " & codOriginal & " - " & denumireOrig
             End If
         End If
 NextVanzare:
