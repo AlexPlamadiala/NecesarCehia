@@ -236,8 +236,8 @@ Public Sub GenerareNecesar()
     If zileVanzare <= 0 Or zileNecesar <= 0 Then
         MsgBox "Setarile de zile nu sunt configurate corect!" & vbNewLine & vbNewLine & _
                "Pe sheet-ul Meniu verificati:" & vbNewLine & _
-               "  - Zile vanzare (C33) = " & wsMeniu.Range(CELL_ZILE_VANZARE).Value & vbNewLine & _
-               "  - Zile necesar (C34) = " & wsMeniu.Range(CELL_ZILE_NECESAR).Value & vbNewLine & vbNewLine & _
+               "  - Zile vanzare (C26) = " & wsMeniu.Range(CELL_ZILE_VANZARE).Value & vbNewLine & _
+               "  - Zile necesar (C27) = " & wsMeniu.Range(CELL_ZILE_NECESAR).Value & vbNewLine & vbNewLine & _
                "Ambele trebuie sa fie numere > 0.", _
                vbCritical, "Eroare Setari"
         Exit Sub
