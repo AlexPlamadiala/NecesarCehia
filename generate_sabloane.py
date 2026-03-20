@@ -43,7 +43,7 @@ def style_header(ws, row, cols):
 def create_sablon_stoc():
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "StocDepozit"
+    ws.title = "StocMagazin"
 
     ws["A1"] = "CodProdus"
     ws["B1"] = "Stoc"
@@ -58,8 +58,8 @@ def create_sablon_stoc():
         ws.cell(row=i, column=1, value=code).alignment = DATA_ALIGN
         ws.cell(row=i, column=2, value=stoc).alignment = DATA_ALIGN
 
-    wb.save("sabloane/Sablon_StocDepozit.xlsx")
-    print(f"  - sabloane/Sablon_StocDepozit.xlsx ({NUM_PRODUCTS} produse)")
+    wb.save("sabloane/Sablon_StocMagazin.xlsx")
+    print(f"  - sabloane/Sablon_StocMagazin.xlsx ({NUM_PRODUCTS} produse)")
 
 
 def create_sablon_vanzari():

@@ -15,7 +15,7 @@ Private Const HEADER_STOC_COL2 As String = "Stoc"
 Private Const HEADER_VANZARI_COL1 As String = "CodProdus"
 Private Const HEADER_VANZARI_COL2 As String = "Cantitate"
 
-Private Const SHEET_STOC As String = "StocDepozit"
+Private Const SHEET_STOC As String = "StocMagazin"
 Private Const SHEET_VANZARI As String = "VanzariMagazin"
 Private Const SHEET_MENIU As String = "Meniu"
 Private Const SHEET_LOG As String = "Log"
@@ -42,7 +42,7 @@ Public Sub ConfigureazaAplicatia()
     Next shp
 
     CreateButton wsMeniu, "btnImportStoc", "ImportStocDepozit", _
-                 "IMPORT STOC DEPOZIT", "B7", "B8"
+                 "IMPORT STOC MAGAZIN", "B7", "B8"
     CreateButton wsMeniu, "btnImportVanzari", "ImportVanzariMagazin", _
                  "IMPORT VANZARI MAGAZIN", "B10", "B11"
     CreateButton wsMeniu, "btnGenNecesar", "GenerareNecesar", _
@@ -77,13 +77,13 @@ Private Sub CreateButton(ws As Worksheet, btnName As String, macroName As String
 End Sub
 
 '==============================================================================
-' IMPORT STOC DEPOZIT (array-based)
+' IMPORT STOC MAGAZIN (array-based)
 '==============================================================================
 Public Sub ImportStocDepozit()
     On Error GoTo ErrHandler
 
     Dim filePath As String
-    filePath = SelectImportFile("Selectati fisierul cu STOC DEPOZIT")
+    filePath = SelectImportFile("Selectati fisierul cu STOC MAGAZIN")
     If filePath = "" Then Exit Sub
 
     If Not ValidateFileStructure(filePath, HEADER_STOC_COL1, HEADER_STOC_COL2) Then
@@ -98,16 +98,16 @@ Public Sub ImportStocDepozit()
 
     ClearSheetData SHEET_STOC
     Dim importedRows As Long
-    importedRows = ImportDataBulk(filePath, SHEET_STOC)
+    importedRows = ImportDataBulk(filePath, SHEET_STOC, 2)
     UpdateImportStatus SHEET_STOC, importedRows
 
     Application.EnableEvents = True
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
 
-    WriteLog "Import Stoc", "Importate " & importedRows & " produse", "OK"
+    WriteLog "Import Stoc Mag", "Importate " & importedRows & " produse", "OK"
     ThisWorkbook.Sheets(SHEET_MENIU).Activate
-    MsgBox "Stoc depozit importat: " & importedRows & " produse.", vbInformation, "Import OK"
+    MsgBox "Stoc magazin importat: " & importedRows & " produse.", vbInformation, "Import OK"
     Exit Sub
 ErrHandler:
     Application.EnableEvents = True
@@ -138,7 +138,7 @@ Public Sub ImportVanzariMagazin()
 
     ClearSheetData SHEET_VANZARI
     Dim importedRows As Long
-    importedRows = ImportDataBulk(filePath, SHEET_VANZARI)
+    importedRows = ImportDataBulk(filePath, SHEET_VANZARI, 2)
     UpdateImportStatus SHEET_VANZARI, importedRows
 
     Application.EnableEvents = True
@@ -199,17 +199,17 @@ Public Sub GenerareNecesar()
     Application.Calculation = xlCalculationManual
     Application.EnableEvents = False
 
-    ' ── 1. Incarcare date in memorie (arrays + dictionare) ──
+    ' -- 1. Incarcare date in memorie (arrays + dictionare) --
 
-    ' Compatibilitati: CodOriginal -> CodCompatibil
+    ' Compatibilitati: CodOriginal (col A=1) -> CodCompatibil (col C=3)
     Dim dictCompat As Object
-    Set dictCompat = LoadDictFromSheet(SHEET_COMPAT, 2, 1, 2)
+    Set dictCompat = LoadDictFromSheet(SHEET_COMPAT, 2, 1, 3)
 
-    ' Reguli rotunjire: CodProdus -> Categorie
+    ' Reguli rotunjire: CodProdus (col A=1) -> Categorie (col C=3)
     Dim dictRotunjire As Object
     Set dictRotunjire = LoadDictFromSheet(SHEET_ROTUNJIRE, ROTUNJIRE_PRODUSE_START, 1, 3)
 
-    ' Stoc depozit: CodProdus -> Stoc (citit ca array in memorie)
+    ' Stoc magazin: citire bulk in matrice -> dictionar
     Dim dictStoc As Object
     Set dictStoc = CreateObject("Scripting.Dictionary")
     dictStoc.CompareMode = vbTextCompare
@@ -220,7 +220,7 @@ Public Sub GenerareNecesar()
     lastRowS = wsStoc.Cells(wsStoc.Rows.Count, 1).End(xlUp).Row
     If lastRowS >= 2 Then
         Dim arrStoc As Variant
-        arrStoc = wsStoc.Range("A2:B" & lastRowS).Value  ' Citire bulk in matrice
+        arrStoc = wsStoc.Range("A2:B" & lastRowS).Value
         Dim s As Long
         For s = 1 To UBound(arrStoc, 1)
             Dim codS As String
@@ -231,26 +231,25 @@ Public Sub GenerareNecesar()
                 End If
             End If
         Next s
-        Erase arrStoc  ' Eliberam memoria
+        Erase arrStoc
     End If
 
-    ' ── 2. Citire vanzari in memorie (array bulk) ──
+    ' -- 2. Citire vanzari in memorie (array bulk) --
     Dim lastRowV As Long
     lastRowV = wsVanzari.Cells(wsVanzari.Rows.Count, 1).End(xlUp).Row
 
     Dim arrVanzari As Variant
-    arrVanzari = wsVanzari.Range("A2:B" & lastRowV).Value  ' Matrice in memorie
+    arrVanzari = wsVanzari.Range("A2:B" & lastRowV).Value
 
     ' Dictionare pentru agregare
-    Dim dictNecesar As Object   ' CodFinal -> cantitate totala
+    Dim dictNecesar As Object
     Set dictNecesar = CreateObject("Scripting.Dictionary")
     dictNecesar.CompareMode = vbTextCompare
 
-    Dim dictOrigCodes As Object ' CodFinal -> "CodOrig1(cant), CodOrig2(cant)"
+    Dim dictOrigCodes As Object
     Set dictOrigCodes = CreateObject("Scripting.Dictionary")
     dictOrigCodes.CompareMode = vbTextCompare
 
-    ' Parcurgem array-ul de vanzari (NU celulele!)
     Dim r As Long
     Dim codOriginal As String, codFinal As String
     Dim cantitate As Long
@@ -287,9 +286,9 @@ Public Sub GenerareNecesar()
         End If
 NextVanzare:
     Next r
-    Erase arrVanzari  ' Eliberam memoria
+    Erase arrVanzari
 
-    ' ── 3. Construim matricea de output in memorie ──
+    ' -- 3. Construim matricea de output in memorie --
     Dim nrProduse As Long
     nrProduse = dictNecesar.Count
 
@@ -325,7 +324,7 @@ NextVanzare:
             End If
         End If
 
-        ' Stoc depozit
+        ' Stoc magazin
         stocDep = 0
         If dictStoc.Exists(codFinal) Then stocDep = CLng(dictStoc(codFinal))
 
@@ -357,26 +356,30 @@ NextVanzare:
         arrOutput(i + 1, 5) = obs
     Next i
 
-    ' ── 4. Scriere BULK in sheet (o singura operatie) ──
+    ' -- 4. Scriere BULK in sheet (o singura operatie) --
     Dim wsNecesar As Worksheet
     Set wsNecesar = ThisWorkbook.Sheets(SHEET_NECESAR)
     ClearSheetData SHEET_NECESAR
 
-    ' Scriere matrice intreaga dintr-o data
-    wsNecesar.Range("A2").Resize(nrProduse, 5).Value = arrOutput
-    Erase arrOutput  ' Eliberam memoria
-
-    ' Formatare bulk (pe range-uri, nu rand cu rand)
+    ' Setam coloana A ca Text INAINTE de scriere
     Dim lastOut As Long
     lastOut = nrProduse + 1
-    With wsNecesar.Range("A2:D" & lastOut)
+    wsNecesar.Range("A2:A" & lastOut).NumberFormat = "@"
+
+    ' Scriere matrice intreaga dintr-o data
+    wsNecesar.Range("A2").Resize(nrProduse, 5).Value = arrOutput
+    Erase arrOutput
+
+    ' Formatare bulk
+    With wsNecesar.Range("B2:D" & lastOut)
         .HorizontalAlignment = xlCenter
         .NumberFormat = "#,##0"
     End With
-    ' Coloana Cod ca text (sa nu piarda zerouri)
-    wsNecesar.Range("A2:A" & lastOut).NumberFormat = "@"
-    ' Coloana Observatii aliniere stanga
+    wsNecesar.Range("A2:A" & lastOut).HorizontalAlignment = xlCenter
     wsNecesar.Range("E2:E" & lastOut).HorizontalAlignment = xlLeft
+
+    ' Borders pe toata zona de date inclusiv header
+    ApplyBorders wsNecesar.Range("A1:E" & lastOut)
 
     ' Auto-filter
     If wsNecesar.AutoFilterMode Then wsNecesar.AutoFilterMode = False
@@ -408,7 +411,6 @@ End Sub
 
 '==============================================================================
 ' INCARCARE DICTIONAR DIN SHEET (bulk array read)
-' Citeste 2 coloane dintr-un sheet si returneaza un Dictionary
 '==============================================================================
 Private Function LoadDictFromSheet(sheetName As String, startRow As Long, _
                                     keyCol As Long, valCol As Long) As Object
@@ -426,20 +428,14 @@ Private Function LoadDictFromSheet(sheetName As String, startRow As Long, _
         Exit Function
     End If
 
-    ' Determinam range-ul maxim (de la keyCol la valCol)
     Dim minCol As Long, maxCol As Long
-    minCol = keyCol
-    maxCol = valCol
-    If keyCol > valCol Then
-        minCol = valCol
-        maxCol = keyCol
-    End If
+    minCol = keyCol: maxCol = valCol
+    If keyCol > valCol Then minCol = valCol: maxCol = keyCol
 
     ' Citire bulk in matrice
     Dim arr As Variant
     arr = ws.Range(ws.Cells(startRow, minCol), ws.Cells(lastRow, maxCol)).Value
 
-    ' Ajustam indexii relativ la matrice
     Dim keyIdx As Long, valIdx As Long
     keyIdx = keyCol - minCol + 1
     valIdx = valCol - minCol + 1
@@ -463,10 +459,12 @@ Private Function LoadDictFromSheet(sheetName As String, startRow As Long, _
 End Function
 
 '==============================================================================
-' IMPORT DATE BULK (citeste fisierul sursa in matrice, scrie bulk)
+' IMPORT DATE BULK (citeste sursa in matrice, scrie bulk)
+' nrCols = cate coloane sa importe din fisierul sursa
 '==============================================================================
 Private Function ImportDataBulk(ByVal filePath As String, _
-                                 ByVal destSheetName As String) As Long
+                                 ByVal destSheetName As String, _
+                                 ByVal nrCols As Long) As Long
     Dim wbSource As Workbook
 
     Application.DisplayAlerts = False
@@ -489,31 +487,38 @@ Private Function ImportDataBulk(ByVal filePath As String, _
     nrRows = lastRow - 1
 
     ' Citim tot in matrice (o singura operatie I/O)
+    Dim colLetter As String
+    colLetter = Chr(64 + nrCols)
     Dim arrData As Variant
-    arrData = wsSource.Range("A2:B" & lastRow).Value
+    arrData = wsSource.Range("A2:" & colLetter & lastRow).Value
 
     ' Inchidem fisierul sursa cat mai repede
     wbSource.Close SaveChanges:=False
 
-    ' Scriem bulk in sheet-ul destinatie
+    ' Pregatim sheet-ul destinatie
     Dim wsDest As Worksheet
     Set wsDest = ThisWorkbook.Sheets(destSheetName)
-    wsDest.Range("A2").Resize(nrRows, 2).Value = arrData
+
+    ' IMPORTANT: Setam coloana A ca Text INAINTE de scriere
+    wsDest.Range("A2:A" & lastRow).NumberFormat = "@"
+
+    ' Scriere bulk
+    wsDest.Range("A2").Resize(nrRows, nrCols).Value = arrData
     Erase arrData
 
-    ' Formatare bulk (pe range, nu rand cu rand)
-    With wsDest.Range("A2:A" & lastRow)
-        .HorizontalAlignment = xlCenter
-        .NumberFormat = "@"  ' Text pentru coduri
-    End With
-    With wsDest.Range("B2:B" & lastRow)
+    ' Formatare bulk
+    wsDest.Range("A2:A" & lastRow).HorizontalAlignment = xlCenter
+    With wsDest.Range("B2:" & colLetter & lastRow)
         .HorizontalAlignment = xlCenter
         .NumberFormat = "#,##0"
     End With
 
+    ' Borders pe toata zona inclusiv header
+    ApplyBorders wsDest.Range("A1:" & colLetter & lastRow)
+
     ' Auto-filter
     If wsDest.AutoFilterMode Then wsDest.AutoFilterMode = False
-    wsDest.Range("A1:B" & lastRow).AutoFilter
+    wsDest.Range("A1:" & colLetter & lastRow).AutoFilter
 
     ImportDataBulk = nrRows
 End Function
@@ -559,7 +564,7 @@ Private Function ApplyRounding(ByVal val As Long, ByVal category As Long, _
                 result = (val \ 5) * 5 + 5
             End If
 
-        Case 4  ' Multiplu de 5, minim 5 daca stoc depozit < 3
+        Case 4  ' Multiplu de 5, minim 5 daca stoc magazin < 3
             If (val Mod 5) < 3 Then
                 result = (val \ 5) * 5
             ElseIf (val Mod 5) = 0 Then
@@ -575,6 +580,17 @@ Private Function ApplyRounding(ByVal val As Long, ByVal category As Long, _
 
     ApplyRounding = result
 End Function
+
+'==============================================================================
+' APLICA BORDERS PE UN RANGE (thin borders pe toate celulele)
+'==============================================================================
+Private Sub ApplyBorders(rng As Range)
+    With rng.Borders
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+        .Color = RGB(0, 0, 0)
+    End With
+End Sub
 
 '==============================================================================
 ' FUNCTII AUXILIARE
@@ -607,7 +623,6 @@ Private Function ValidateFileStructure(ByVal filePath As String, _
     Set wbSource = Workbooks.Open(Filename:=filePath, ReadOnly:=True, UpdateLinks:=0)
     Application.DisplayAlerts = True
 
-    ' Citim doar 2 celule - extrem de rapid
     Dim h1 As String, h2 As String
     h1 = CleanHeader(CStr(wbSource.Sheets(1).Cells(1, 1).Value))
     h2 = CleanHeader(CStr(wbSource.Sheets(1).Cells(1, 2).Value))
@@ -666,7 +681,6 @@ Private Sub WriteLog(ByVal operatiune As String, ByVal detalii As String, ByVal 
     Dim nextRow As Long
     nextRow = wsLog.Cells(wsLog.Rows.Count, 1).End(xlUp).Row + 1
 
-    ' Scriere 4 celule simultan prin array
     Dim arrLog(1 To 1, 1 To 4) As Variant
     arrLog(1, 1) = Format(Now, "dd.mm.yyyy hh:nn:ss")
     arrLog(1, 2) = operatiune
@@ -681,5 +695,8 @@ Private Sub WriteLog(ByVal operatiune As String, ByVal detalii As String, ByVal 
     End If
     wsLog.Cells(nextRow, 1).HorizontalAlignment = xlCenter
     wsLog.Cells(nextRow, 4).HorizontalAlignment = xlCenter
+
+    ' Borders pe randul nou de log
+    ApplyBorders wsLog.Range(wsLog.Cells(nextRow, 1), wsLog.Cells(nextRow, 4))
     On Error GoTo 0
 End Sub
