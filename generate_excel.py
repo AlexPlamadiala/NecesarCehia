@@ -139,14 +139,43 @@ def create_menu_sheet(wb):
         "1. Importati stocul si vanzarile folosind butoanele de mai sus.",
         "2. Fisierele trebuie sa respecte sabloanele din folderul 'sabloane'.",
         "3. Configurati Compatibilitati si ReguliRotunjire daca e necesar.",
-        "4. Apasati GENERARE NECESAR pentru a calcula necesarul.",
-        "5. Rezultatul apare in sheet-ul Necesar.",
+        "4. Setati zilele de vanzare si necesar mai jos.",
+        "5. Apasati GENERARE NECESAR pentru a calcula necesarul.",
     ]
     for i, text in enumerate(instructions):
         r = 27 + i
         ws.merge_cells(f"B{r}:C{r}")
         ws[f"B{r}"].value = text
         ws[f"B{r}"].font = Font(name="Calibri", size=10, color="444444")
+
+    # -- SETARI CALCUL NECESAR (VBA citeste C33 si C34) --
+    settings_fill = PatternFill(start_color="FFF3E0", end_color="FFF3E0", fill_type="solid")
+    settings_border = THIN_BORDER
+
+    ws["B33"].value = "Zile vanzare:"
+    ws["B33"].font = Font(name="Calibri", bold=True, size=11)
+    ws["C33"].value = 30
+    ws["C33"].font = Font(name="Calibri", bold=True, size=14, color="2F5496")
+    ws["C33"].fill = settings_fill
+    ws["C33"].border = settings_border
+    ws["C33"].alignment = Alignment(horizontal="center")
+
+    ws["B34"].value = "Zile necesar:"
+    ws["B34"].font = Font(name="Calibri", bold=True, size=11)
+    ws["C34"].value = 7
+    ws["C34"].font = Font(name="Calibri", bold=True, size=14, color="2F5496")
+    ws["C34"].fill = settings_fill
+    ws["C34"].border = settings_border
+    ws["C34"].alignment = Alignment(horizontal="center")
+
+    ws.merge_cells("B32:C32")
+    ws["B32"].value = "SETARI CALCUL"
+    ws["B32"].font = SECTION_FONT
+
+    # Explicatie formula
+    ws.merge_cells("B36:C36")
+    ws["B36"].value = "Formula: Necesar = CEILING((Vanzare / ZileVanz) * ZileNec) - Stoc"
+    ws["B36"].font = Font(name="Calibri", italic=True, size=9, color="888888")
 
     return ws
 
@@ -243,9 +272,10 @@ def create_necesar_sheet(wb):
     headers = [
         ("Cod Produs", 25),
         ("Vanzare", 15),
+        ("Medie/Zi", 12),
         ("Stoc Magazin", 15),
         ("Necesar", 15),
-        ("Observatii", 60),
+        ("Observatii", 55),
     ]
     for i, (h, w) in enumerate(headers, 1):
         ws.cell(row=1, column=i, value=h)

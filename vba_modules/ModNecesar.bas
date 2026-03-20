@@ -5,6 +5,15 @@ Attribute VB_Name = "ModNecesar"
 '            Toate operatiile lucreaza in memorie cu arrays/matrici.
 '            Scriere in Excel bulk (nu rand cu rand).
 '
+' FORMULA NECESAR:
+'   MedieZilnica = Vanzare / ZileVanzare
+'   NecesarBrut  = (MedieZilnica * ZileNecesar) - StocMagazin
+'   Necesar      = MAX(0, CEILING(NecesarBrut)) -> apoi rotunjire categorie
+'
+' SETARI (pe sheet-ul Meniu):
+'   C33 = Zile vanzare (pe cate zile e vanzarea importata)
+'   C34 = Zile necesar (pe cate zile calculam necesarul)
+'
 ' SETUP: Dupa import, rulati macro-ul "ConfigureazaAplicatia" (Alt+F8)
 '==============================================================================
 Option Explicit
@@ -25,6 +34,10 @@ Private Const SHEET_NECESAR As String = "Necesar"
 
 ' Randul de unde incepe lista de produse in sheet-ul ReguliRotunjire
 Private Const ROTUNJIRE_PRODUSE_START As Long = 8
+
+' Celulele de setari pe sheet-ul Meniu
+Private Const CELL_ZILE_VANZARE As String = "C33"
+Private Const CELL_ZILE_NECESAR As String = "C34"
 
 '==============================================================================
 ' CONFIGURARE APLICATIE - RULATI O SINGURA DATA DUPA IMPORT
@@ -184,6 +197,12 @@ End Sub
 
 '==============================================================================
 ' GENERARE NECESAR APROVIZIONARE (totul in memorie, scriere bulk)
+'
+' Formula:
+'   MedieZilnica = VanzareTotal / ZileVanzare
+'   NecesarBrut  = (MedieZilnica * ZileNecesar) - StocMagazin
+'   Necesar      = MAX(0, rotunjire_sus_la_intreg(NecesarBrut))
+'   apoi se aplica rotunjirea pe categorii daca exista
 '==============================================================================
 Public Sub GenerareNecesar()
     On Error GoTo ErrHandler
@@ -192,6 +211,35 @@ Public Sub GenerareNecesar()
     Set wsVanzari = ThisWorkbook.Sheets(SHEET_VANZARI)
     If wsVanzari.Cells(2, 1).Value = "" Then
         MsgBox "Nu exista date de vanzari importate!", vbExclamation, "Atentie"
+        Exit Sub
+    End If
+
+    ' -- Citim setarile de pe Meniu --
+    Dim wsMeniu As Worksheet
+    Set wsMeniu = ThisWorkbook.Sheets(SHEET_MENIU)
+
+    Dim zileVanzare As Long
+    Dim zileNecesar As Long
+
+    If IsNumeric(wsMeniu.Range(CELL_ZILE_VANZARE).Value) Then
+        zileVanzare = CLng(wsMeniu.Range(CELL_ZILE_VANZARE).Value)
+    Else
+        zileVanzare = 0
+    End If
+
+    If IsNumeric(wsMeniu.Range(CELL_ZILE_NECESAR).Value) Then
+        zileNecesar = CLng(wsMeniu.Range(CELL_ZILE_NECESAR).Value)
+    Else
+        zileNecesar = 0
+    End If
+
+    If zileVanzare <= 0 Or zileNecesar <= 0 Then
+        MsgBox "Setarile de zile nu sunt configurate corect!" & vbNewLine & vbNewLine & _
+               "Pe sheet-ul Meniu verificati:" & vbNewLine & _
+               "  - Zile vanzare (C33) = " & wsMeniu.Range(CELL_ZILE_VANZARE).Value & vbNewLine & _
+               "  - Zile necesar (C34) = " & wsMeniu.Range(CELL_ZILE_NECESAR).Value & vbNewLine & vbNewLine & _
+               "Ambele trebuie sa fie numere > 0.", _
+               vbCritical, "Eroare Setari"
         Exit Sub
     End If
 
@@ -242,11 +290,11 @@ Public Sub GenerareNecesar()
     arrVanzari = wsVanzari.Range("A2:B" & lastRowV).Value
 
     ' Dictionare pentru agregare
-    Dim dictNecesar As Object
-    Set dictNecesar = CreateObject("Scripting.Dictionary")
-    dictNecesar.CompareMode = vbTextCompare
+    Dim dictVanzare As Object   ' CodFinal -> vanzare totala
+    Set dictVanzare = CreateObject("Scripting.Dictionary")
+    dictVanzare.CompareMode = vbTextCompare
 
-    Dim dictOrigCodes As Object
+    Dim dictOrigCodes As Object ' CodFinal -> "CodOrig1(cant), CodOrig2(cant)"
     Set dictOrigCodes = CreateObject("Scripting.Dictionary")
     dictOrigCodes.CompareMode = vbTextCompare
 
@@ -270,10 +318,10 @@ Public Sub GenerareNecesar()
         End If
 
         ' Agregam cantitatile per cod final
-        If dictNecesar.Exists(codFinal) Then
-            dictNecesar(codFinal) = dictNecesar(codFinal) + cantitate
+        If dictVanzare.Exists(codFinal) Then
+            dictVanzare(codFinal) = dictVanzare(codFinal) + cantitate
         Else
-            dictNecesar.Add codFinal, cantitate
+            dictVanzare.Add codFinal, cantitate
         End If
 
         ' Evidenta coduri originale (doar la inlocuire)
@@ -290,7 +338,7 @@ NextVanzare:
 
     ' -- 3. Construim matricea de output in memorie --
     Dim nrProduse As Long
-    nrProduse = dictNecesar.Count
+    nrProduse = dictVanzare.Count
 
     If nrProduse = 0 Then
         Application.EnableEvents = True
@@ -300,21 +348,40 @@ NextVanzare:
         Exit Sub
     End If
 
-    ' Matrice output: 5 coloane (Cod, Vanzare, StocDepozit, Necesar, Observatii)
+    ' Matrice output: 6 coloane (Cod, Vanzare, MedieZi, StocMag, Necesar, Observatii)
     Dim arrOutput() As Variant
-    ReDim arrOutput(1 To nrProduse, 1 To 5)
+    ReDim arrOutput(1 To nrProduse, 1 To 6)
 
     Dim keys As Variant
-    keys = dictNecesar.keys
+    keys = dictVanzare.keys
 
     Dim i As Long
     Dim vanzareTotal As Long, necesarFinal As Long
-    Dim catRotunjire As Long, stocDep As Long
+    Dim catRotunjire As Long, stocMag As Long
+    Dim medieZilnica As Double, necesarBrut As Double
+    Dim necesarRotunjit As Long
     Dim obs As String
 
     For i = 0 To nrProduse - 1
         codFinal = CStr(keys(i))
-        vanzareTotal = CLng(dictNecesar(codFinal))
+        vanzareTotal = CLng(dictVanzare(codFinal))
+
+        ' Calculam media zilnica si necesarul brut
+        medieZilnica = CDbl(vanzareTotal) / CDbl(zileVanzare)
+
+        ' Stoc magazin
+        stocMag = 0
+        If dictStoc.Exists(codFinal) Then stocMag = CLng(dictStoc(codFinal))
+
+        ' Necesar brut = (medie * zile_necesar) - stoc
+        necesarBrut = (medieZilnica * CDbl(zileNecesar)) - CDbl(stocMag)
+
+        ' Rotunjim in sus la numar intreg, minim 0
+        If necesarBrut <= 0 Then
+            necesarRotunjit = 0
+        Else
+            necesarRotunjit = -Int(-necesarBrut)  ' Ceiling in VBA
+        End If
 
         ' Categorie rotunjire
         catRotunjire = 0
@@ -324,15 +391,11 @@ NextVanzare:
             End If
         End If
 
-        ' Stoc magazin
-        stocDep = 0
-        If dictStoc.Exists(codFinal) Then stocDep = CLng(dictStoc(codFinal))
-
-        ' Aplicam rotunjirea
-        If catRotunjire >= 1 And catRotunjire <= 4 Then
-            necesarFinal = ApplyRounding(vanzareTotal, catRotunjire, stocDep)
+        ' Aplicam rotunjirea pe categorii (daca exista si daca necesarul > 0)
+        If necesarRotunjit > 0 And catRotunjire >= 1 And catRotunjire <= 4 Then
+            necesarFinal = ApplyRounding(necesarRotunjit, catRotunjire, stocMag)
         Else
-            necesarFinal = vanzareTotal
+            necesarFinal = necesarRotunjit
         End If
 
         ' Construim observatii
@@ -340,10 +403,10 @@ NextVanzare:
         If dictOrigCodes.Exists(codFinal) Then
             obs = "Compatibil: " & CStr(dictOrigCodes(codFinal))
         End If
-        If catRotunjire > 0 And necesarFinal <> vanzareTotal Then
+        If catRotunjire > 0 And necesarFinal <> necesarRotunjit And necesarRotunjit > 0 Then
             If obs <> "" Then obs = obs & " | "
-            obs = obs & "Rot.cat." & catRotunjire & " (" & vanzareTotal & "->" & necesarFinal & ")"
-        ElseIf catRotunjire > 0 Then
+            obs = obs & "Rot.cat." & catRotunjire & " (" & necesarRotunjit & "->" & necesarFinal & ")"
+        ElseIf catRotunjire > 0 And necesarRotunjit > 0 Then
             If obs <> "" Then obs = obs & " | "
             obs = obs & "Rot.cat." & catRotunjire
         End If
@@ -351,9 +414,10 @@ NextVanzare:
         ' Scriem in matricea de output (NU in celule!)
         arrOutput(i + 1, 1) = codFinal
         arrOutput(i + 1, 2) = vanzareTotal
-        arrOutput(i + 1, 3) = stocDep
-        arrOutput(i + 1, 4) = necesarFinal
-        arrOutput(i + 1, 5) = obs
+        arrOutput(i + 1, 3) = Round(medieZilnica, 2)
+        arrOutput(i + 1, 4) = stocMag
+        arrOutput(i + 1, 5) = necesarFinal
+        arrOutput(i + 1, 6) = obs
     Next i
 
     ' -- 4. Scriere BULK in sheet (o singura operatie) --
@@ -361,34 +425,36 @@ NextVanzare:
     Set wsNecesar = ThisWorkbook.Sheets(SHEET_NECESAR)
     ClearSheetData SHEET_NECESAR
 
-    ' Setam coloana A ca Text INAINTE de scriere
     Dim lastOut As Long
     lastOut = nrProduse + 1
+
+    ' Setam coloana A ca Text INAINTE de scriere
     wsNecesar.Range("A2:A" & lastOut).NumberFormat = "@"
 
     ' Scriere matrice intreaga dintr-o data
-    wsNecesar.Range("A2").Resize(nrProduse, 5).Value = arrOutput
+    wsNecesar.Range("A2").Resize(nrProduse, 6).Value = arrOutput
     Erase arrOutput
 
     ' Formatare bulk
-    With wsNecesar.Range("B2:D" & lastOut)
-        .HorizontalAlignment = xlCenter
-        .NumberFormat = "#,##0"
-    End With
     wsNecesar.Range("A2:A" & lastOut).HorizontalAlignment = xlCenter
-    wsNecesar.Range("E2:E" & lastOut).HorizontalAlignment = xlLeft
+    With wsNecesar.Range("B2:E" & lastOut)
+        .HorizontalAlignment = xlCenter
+    End With
+    wsNecesar.Range("B2:B" & lastOut).NumberFormat = "#,##0"
+    wsNecesar.Range("C2:C" & lastOut).NumberFormat = "#,##0.00"
+    wsNecesar.Range("D2:E" & lastOut).NumberFormat = "#,##0"
+    wsNecesar.Range("F2:F" & lastOut).HorizontalAlignment = xlLeft
 
     ' Borders pe toata zona de date inclusiv header
-    ApplyBorders wsNecesar.Range("A1:E" & lastOut)
+    ApplyBorders wsNecesar.Range("A1:F" & lastOut)
 
     ' Auto-filter
     If wsNecesar.AutoFilterMode Then wsNecesar.AutoFilterMode = False
-    wsNecesar.Range("A1:E" & lastOut).AutoFilter
+    wsNecesar.Range("A1:F" & lastOut).AutoFilter
 
     ' Actualizam statusul
-    Dim wsMeniu As Worksheet
-    Set wsMeniu = ThisWorkbook.Sheets(SHEET_MENIU)
-    wsMeniu.Range("C23").Value = "Generat (" & nrProduse & " produse)"
+    wsMeniu.Range("C23").Value = "Generat (" & nrProduse & " produse, " & _
+        zileVanzare & "z vanz / " & zileNecesar & "z nec)"
     wsMeniu.Range("C23").Font.Color = RGB(46, 125, 50)
     wsMeniu.Range("C22").Value = Format(Now, "dd.mm.yyyy hh:nn:ss")
 
@@ -396,9 +462,12 @@ NextVanzare:
     Application.Calculation = xlCalculationAutomatic
     Application.ScreenUpdating = True
 
-    WriteLog "Generare Necesar", "Generat " & nrProduse & " produse", "OK"
+    WriteLog "Generare Necesar", "Generat " & nrProduse & " produse (" & _
+        zileVanzare & "z/" & zileNecesar & "z)", "OK"
     ThisWorkbook.Sheets(SHEET_MENIU).Activate
-    MsgBox "Necesar generat: " & nrProduse & " produse.", vbInformation, "Necesar OK"
+    MsgBox "Necesar generat: " & nrProduse & " produse." & vbNewLine & _
+           "(" & zileVanzare & " zile vanzare / " & zileNecesar & " zile necesar)", _
+           vbInformation, "Necesar OK"
     Exit Sub
 
 ErrHandler:
@@ -460,7 +529,6 @@ End Function
 
 '==============================================================================
 ' IMPORT DATE BULK (citeste sursa in matrice, scrie bulk)
-' nrCols = cate coloane sa importe din fisierul sursa
 '==============================================================================
 Private Function ImportDataBulk(ByVal filePath As String, _
                                  ByVal destSheetName As String, _
@@ -486,20 +554,17 @@ Private Function ImportDataBulk(ByVal filePath As String, _
     Dim nrRows As Long
     nrRows = lastRow - 1
 
-    ' Citim tot in matrice (o singura operatie I/O)
     Dim colLetter As String
     colLetter = Chr(64 + nrCols)
     Dim arrData As Variant
     arrData = wsSource.Range("A2:" & colLetter & lastRow).Value
 
-    ' Inchidem fisierul sursa cat mai repede
     wbSource.Close SaveChanges:=False
 
-    ' Pregatim sheet-ul destinatie
     Dim wsDest As Worksheet
     Set wsDest = ThisWorkbook.Sheets(destSheetName)
 
-    ' IMPORTANT: Setam coloana A ca Text INAINTE de scriere
+    ' Setam coloana A ca Text INAINTE de scriere
     wsDest.Range("A2:A" & lastRow).NumberFormat = "@"
 
     ' Scriere bulk
@@ -513,7 +578,7 @@ Private Function ImportDataBulk(ByVal filePath As String, _
         .NumberFormat = "#,##0"
     End With
 
-    ' Borders pe toata zona inclusiv header
+    ' Borders
     ApplyBorders wsDest.Range("A1:" & colLetter & lastRow)
 
     ' Auto-filter
@@ -582,7 +647,7 @@ Private Function ApplyRounding(ByVal val As Long, ByVal category As Long, _
 End Function
 
 '==============================================================================
-' APLICA BORDERS PE UN RANGE (thin borders pe toate celulele)
+' APLICA BORDERS PE UN RANGE
 '==============================================================================
 Private Sub ApplyBorders(rng As Range)
     With rng.Borders
@@ -696,7 +761,6 @@ Private Sub WriteLog(ByVal operatiune As String, ByVal detalii As String, ByVal 
     wsLog.Cells(nextRow, 1).HorizontalAlignment = xlCenter
     wsLog.Cells(nextRow, 4).HorizontalAlignment = xlCenter
 
-    ' Borders pe randul nou de log
     ApplyBorders wsLog.Range(wsLog.Cells(nextRow, 1), wsLog.Cells(nextRow, 4))
     On Error GoTo 0
 End Sub
